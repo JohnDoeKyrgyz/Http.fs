@@ -5,6 +5,7 @@ open System.Text
 open Fuchu
 open HttpFs.Client
 open HttpFs.Client.Request
+open System.Security.Cryptography.X509Certificates
 
 let ValidUri = Uri "http://www"
 let validRequest = create Get ValidUri
@@ -93,6 +94,16 @@ let api =
             "contains first item", fun qs -> Assert.Contains(qs, "v1")
             "contains second item", fun qs -> Assert.Contains(qs, "v2")
           ]
+
+        testCase "clientCertificates applies certificates" <| fun _ ->
+            let certificate = new X509Certificate()
+
+            let req =
+                validRequest
+                |> clientCertificates [certificate]
+
+            Assert.IsTrue( req.clientCertificates.Length = 1 )
+            Assert.IsTrue( req.clientCertificates.Head = certificate )
 
         testCase "withCookie throws an exception if cookies are disabled" <| fun _ ->
             Assert.Raise("there is no cake", typeof<Exception>, fun() ->

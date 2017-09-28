@@ -37,6 +37,7 @@ module Client =
   open Microsoft.FSharp.Control
   open Microsoft.FSharp.Control.CommonExtensions
   open Microsoft.FSharp.Control.WebExtensions
+  open System.Security.Cryptography.X509Certificates
 
   [<Measure>] type ms
 
@@ -365,6 +366,7 @@ module Client =
   type Request =
     { url                       : Uri
       ``method``                : HttpMethod
+      clientCertificates        : X509Certificate list
       cookiesEnabled            : bool
       autoFollowRedirects       : bool
       autoDecompression         : DecompressionScheme
@@ -666,6 +668,12 @@ module Client =
                 | Custom (customName, customValue) -> add customName customValue)
                 headers
 
+    /// Sets ClientCertificates on HttpWebRequest.
+    /// Mutates HttpWebRequest.
+    let setClientCertificates clientCertificates (webRequest : HttpWebRequest) =
+      if clientCertificates |> List.isEmpty |> not then do
+        webRequest.ClientCertificates <- new X509CertificateCollection( clientCertificates |> Array.ofList )
+
     /// Sets cookies on HttpWebRequest.
     /// Mutates HttpWebRequest.
     let setCookies (cookies : Cookie list) (url : Uri) (webRequest : HttpWebRequest) =
@@ -772,6 +780,7 @@ module Client =
       webRequest.AutomaticDecompression <- enum<DecompressionMethods> <| int request.autoDecompression
 
       webRequest |> setHeaders (request.headers |> Map.toList |> List.map snd)
+      webRequest |> setClientCertificates request.clientCertificates
       webRequest |> setCookies (request.cookies |> Map.toList |> List.map snd) request.url
       webRequest |> setProxy request.proxy
       webRequest |> setNetworkCredentials request.networkCredentials
@@ -954,6 +963,7 @@ module Client =
     let create httpMethod (url : Uri) =
       { url                       = url
         ``method``                = httpMethod
+        clientCertificates         = []
         cookiesEnabled            = true
         autoFollowRedirects       = true
         autoDecompression         = DecompressionScheme.None
@@ -972,6 +982,10 @@ module Client =
 
     let createUrl httpMethod url =
       create httpMethod (Uri url)
+    
+    /// Provide client certificates
+    let clientCertificates certificates (request : Request) =
+      { request with clientCertificates = certificates }
 
     /// Disables cookies, which are enabled by default
     let cookiesDisabled request =
